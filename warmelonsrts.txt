@@ -1,0 +1,7 @@
+"warmelonsrts"
+{
+	"base"			"sandbox"
+	"title"			"Warmelons:RTS"
+	"maps"			"^wm_"
+	"menusystem"	"1"
+}

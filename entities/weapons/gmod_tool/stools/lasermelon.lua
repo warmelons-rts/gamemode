@@ -1,0 +1,92 @@
+TOOL.Category		= "(WarMelons)"
+TOOL.Name			= "#Lasers"
+TOOL.Command		= nil
+TOOL.ConfigName		= ""
+
+TOOL.ClientConVar[ "teamnumber" ] = "1"
+TOOL.ClientConVar[ "welded" ] = "1"
+
+if (CLIENT) then
+	language.Add( "Tool_lasermelon_name", "Laser Melons" )
+	language.Add( "Tool_lasermelon_desc", "Melons with 1.5-second burst lasers (BAD ON DEFENSE)" )
+	language.Add( "Tool_lasermelon_0", "Left-click to spawn a warmelon. Right-click to display cost." )
+	language.Add( "Undone_lasermelon", "Undone Laser" )
+	language.Add( 'SBoxLimit_lap_melons', 'Personal Melon Limit Reached' )
+end
+
+function TOOL:LeftClick (trace)
+if ( SERVER ) then
+if ( !self:GetSWEP():CheckLimit( "lap_melons" ) ) then return false end
+	local ply = self:GetOwner()
+	local Pos = trace.HitPos
+	local Ang = trace.HitNormal
+	local cteam = 0
+	if ply:Team() ~= 0 then
+	cteam = ply:Team()
+	else
+	cteam = self:GetClientNumber("teamnumber")
+	end
+	local toolcost = GetConVarNumber( "WM_Toolcost", 1 )
+	local cost = (1000)*toolcost
+	if !InBaseRange(ply, Pos) then return false end
+    if !NRGCheck(ply, cost) then return false end
+if (trace.Hit && !trace.HitNoDraw) then
+	melon = ents.Create ("johnny_laser_l");
+	melon.Cost = cost
+		if (self:GetClientNumber("welded") == 0) then
+		melon.Mine = 0
+		melon:SetPos (trace.HitPos + trace.HitNormal * 12);
+		else
+		melon.Mine = 1
+		melon:SetPos (trace.HitPos + trace.HitNormal * -2);
+		end
+	melon:SetAngles (trace.HitNormal:Angle()+Angle(90, 0, 0));
+	melon.Team = cteam
+	melon.Grav = true
+	melon:Spawn ();
+	ply:AddCount('lap_melons', melon)
+	melon:Activate ();
+	melon:GetPhysicsObject():EnableGravity(true);
+	if (self:GetClientNumber("welded") == 1) then upright = constraint.Weld (melon, trace.Entity, 0, trace.PhysicsBone, 0, true) end
+	trace.Entity:DeleteOnRemove(melon);
+	undo.Create("lasermelon");
+    undo.AddEntity (melon);
+    cleanup.Add( ply, "WarMelons", melon )
+	if (self:GetClientNumber("welded") == 1) then undo.AddEntity (upright) end
+    undo.SetPlayer (self:GetOwner());
+	undo.Finish();
+	return true;
+end
+end
+end
+
+function TOOL:RightClick (trace)
+if (SERVER) then
+local ply = self:GetOwner()
+local toolcost = GetConVarNumber( "WM_Toolcost", 1 )
+local cost = (1000)*toolcost
+WMSendCost(ply, cost, false)
+end
+	return false
+end
+
+function TOOL.BuildCPanel (CPanel)
+	CPanel:AddControl ("Header", { Text="#Tool_lasermelon_name", Description="#Tool_lasermelon_desc" })
+	local VGUI = vgui.Create("WMHelpButton",CPanel);
+	VGUI:SetTopic("Laser");
+    	CPanel:AddPanel(VGUI);
+	if LocalPlayer():IsAdmin() then
+	CPanel:AddControl ("Slider", {
+		Label = "Team Number (Only applies on Team 0)",
+		Command = "lasermelon_teamnumber",
+		Type = "Integer",
+		Min = "1",
+		Max = "6"
+	} )
+end
+	CPanel:AddControl( "Checkbox", {
+		Label = "Weld",
+		Description = "Uncheck box and melons will not be attached to what you shoot at",
+		Command = "lasermelon_welded"
+	} )
+end
